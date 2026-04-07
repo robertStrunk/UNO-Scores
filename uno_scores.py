@@ -27,6 +27,20 @@ def parse_iso_date(s: str) -> date | None:
         return None
 
 
+def latest_score_date_from_csv(path: Path) -> date:
+    rows = read_rows(path)
+    if len(rows) < 2:
+        return date.today()
+    _, *data = rows
+    for r in reversed(data):
+        if not r:
+            continue
+        d = parse_iso_date(r[0])
+        if d is not None:
+            return d
+    return date.today()
+
+
 def ensure_header(path: Path, headers: list[str]) -> None:
     if path.exists() and path.stat().st_size > 0:
         return
@@ -82,7 +96,7 @@ class UnoScoresApp(tk.Tk):
         self.player_names = ["Dad", "Luke", "Jake"]
         self.winner_var = tk.IntVar(value=0)
         self.points_var = tk.StringVar(value="")
-        self.date_var = tk.StringVar(value=date.today().isoformat())
+        self.date_var = tk.StringVar(value=latest_score_date_from_csv(DATA_FILE).isoformat())
 
         self._build_ui()
 
@@ -117,7 +131,10 @@ class UnoScoresApp(tk.Tk):
         ttk.Entry(frm, textvariable=self.points_var, width=12).grid(row=6, column=1, sticky="w", **pad)
 
         ttk.Label(frm, text="Date (YYYY-MM-DD)").grid(row=7, column=0, sticky="e", **pad)
-        ttk.Entry(frm, textvariable=self.date_var, width=14).grid(row=7, column=1, sticky="w", **pad)
+        date_row = ttk.Frame(frm)
+        date_row.grid(row=7, column=1, sticky="w", **pad)
+        ttk.Entry(date_row, textvariable=self.date_var, width=14).pack(side=tk.LEFT)
+        ttk.Button(date_row, text="Today", command=self._set_date_today).pack(side=tk.LEFT, padx=(8, 0))
 
         ttk.Label(frm, text="Comment (optional)").grid(row=8, column=0, sticky="ne", **pad)
         self.comment_text = tk.Text(frm, height=3, width=42, wrap=tk.WORD)
@@ -161,6 +178,9 @@ class UnoScoresApp(tk.Tk):
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         self._refresh_view()
+
+    def _set_date_today(self) -> None:
+        self.date_var.set(date.today().isoformat())
 
     def _player_label(self, index: int) -> str:
         v = self.player_names[index]
